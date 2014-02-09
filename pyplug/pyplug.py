@@ -10,6 +10,8 @@ it. It should then be connected to a socket, through which the plugs can communi
 
 Through doing this, you should be able to have a small number of entities, which can be
 controlled by connecting and disconnecting plugs as required to influence their behaviour.
+
+Source is on github: https://github.com/ackwell/PyPlug
 """
 
 from collections import defaultdict
