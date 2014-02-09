@@ -4,9 +4,10 @@
 pattern, somewhat inspired by [this post](http://gameprogrammingpatterns.com/component.html)
 by Bob Nystrom.
 
-It exposes two classes, the `Socket` and the `Plug`. A plug should handle a single behaviour --
-for example, should specify the portion of a spritemap that should be displayed -- and that's
-it. It should then be connected to a socket, through which the plugs can communicate.
+It exposes two classes, the `Socket` and the `Plug`, and the `NotSuppliedError`. A plug should
+handle a single behaviour -- for example, should specify the portion of a spritemap that should
+be displayed -- and that's it. It should then be connected to a socket, through which the plugs
+can communicate.
 
 Through doing this, you should be able to have a small number of entities, which can be
 controlled by connecting and disconnecting plugs as required to influence their behaviour.
@@ -15,6 +16,13 @@ Source is on github: https://github.com/ackwell/PyPlug
 """
 
 from collections import defaultdict
+
+class NotSuppliedError(AttributeError):
+	"""
+	Raised when an object attempts to access an attribute on a `Socket` object, but the socket
+	is not connected to any plugs that provide that attribute.
+	"""
+	pass
 
 # === Socket ===
 
@@ -29,6 +37,15 @@ class Socket(object):
 		# Need to use `super().__setattr__` to avoid my own `__setattr__`
 		super().__setattr__('_connections', defaultdict(list))
 		super().__setattr__('_compiled_connections', [])
+		self.ready()
+
+	def ready(self):
+		"""
+		Called at the end of `__init__`. It's advised that this function be overwritten instead of
+		`__init__`, as an overwritten `__init__` with no call on it's `super()` results in infinite
+		recursion which can be irritating to debug.
+		"""
+		pass
 
 	def connect(self, plug, priority=0):
 		"""
@@ -106,7 +123,7 @@ class Socket(object):
 
 		# If no connection supplies `name`, throw a hissy about it.
 		if not supplied:
-			raise ValueError('The property `{}` is not supplied to this socket.'.format(name))
+			raise NotSuppliedError('The property `{}` is not supplied to this socket.'.format(name))
 
 # === Plug ===
 
@@ -119,6 +136,14 @@ class Plug(object):
 	def __init__(self):
 		self.socket = None
 		self._supplies = {}
+		self.ready()
+
+	def ready(self):
+		"""
+		Equivalent to the `.ready()` function on Socket, it's suggested that you overwrite this rather
+		than `__init__`.
+		"""
+		pass
 
 	def connected(self):
 		"""
@@ -142,7 +167,19 @@ class Plug(object):
 
 		If the optional parameter `alias` is passed, the attribute `name` will be avaliable on the
 		socket as `alias`, instead.
+
+		Alternatively, an object of `name: alias` pairs or a list of names can be passed, all of
+		which will be added.
 		"""
-		if not alias:
-			alias = name
-		self._supplies[alias] = name
+		if isinstance(name, dict):
+			for key, value in name.items():
+				self._supplies[value] = key
+
+		elif isinstance(name, list):
+			for value in name:
+				self._supplies[value] = value
+
+		else:
+			if not alias:
+				alias = name
+			self._supplies[alias] = name
